@@ -3,213 +3,250 @@
 /** Define UI specific stuff.
  */
 var UI = (function () {
+
   /** Resize the scrollable containers and make sure they are resized whenever
    * the window is resized.
-   * Also introduce FastClick for faster clicking on mobile.
    */
-  $(function() {
-    FastClick.attach(document.body);    
-    
-    var resize = function() {
-      var h = $(window).height();
-      var offset = 111;
-      if ($(window).width() < 992) {
-        offset = 112;
-      }
-      $('.scrollable').height(h - offset + 'px');
+  $(function () {
 
+    // Introduce FastClick for faster clicking on mobile.
+    FastClick.attach(document.body);
+
+    function resize() {
+
+      var windowWidth = $(window).width();
+      var windowHeight = $(window).height();
+
+      // offset = navbar + panel-heading + padding-top + padding-bottom
+      var offset = windowWidth < 992 ? 112 : 111;
+      var scrollableHeight = windowHeight - offset;
+      $('.scrollable').height(scrollableHeight + 'px');
+
+      // move content elements to different-sized container elementss
       var types = ['research', 'hr', 'upgrades'];
-
-      if ($(window).width() < 992) {
+      if (windowWidth < 992) {
         for (var i = 0; i < types.length; i++) {
-          if ($('#' + types[i] + 'Content').parent().attr('id') == types[i] + 'Large') {
-            $('#' + types[i] + 'Content').detach().appendTo('#' + types[i]);
+          var $elem = $('#' + types[i] + 'Content');
+          if ($elem.parent().attr('id') == types[i] + 'Large') {
+            $elem.detach().appendTo('#' + types[i]);
           }
         }
       } else {
         for (var i = 0; i < types.length; i++) {
-          if ($('#' + types[i] + 'Content').parent().attr('id') != types[i] + 'Large') {
-            $('#' + types[i] + 'Content').detach().appendTo('#' + types[i] + 'Large');
+          var $elem = $('#' + types[i] + 'Content');
+          if ($elem.parent().attr('id') != types[i] + 'Large') {
+            $elem.detach().appendTo('#' + types[i] + 'Large');
           }
         }
       }
 
-      if ($(window).width() < 600) {
-        var newWidth = Math.max($(window).width() - ($(window).height() - 90 + 10), 300);
-        $('#column-lab').width($(window).width() - newWidth);
-        $('#column-tabs').width(newWidth);
+      // Used for column width and detector size
+      var magicWidth = Math.max(windowWidth - (windowHeight - 90 + 10), 300);
+
+      // set column width
+      if (windowWidth < 600) {
+        $('#column-lab').width(windowWidth - magicWidth);
+        $('#column-tabs').width(magicWidth);
       } else {
         $('#column-lab').removeAttr('style');
         $('#column-tabs').removeAttr('style');
       }
 
-      if ($(window).width() >= 1200) {
-        if (detector.width != 500) {
-          $('#detector').width(500).height(500);
-          detector.init(500);
-        }
-      } else if ($(window).width() < 768 && $(window).height() - 90 < 300) {
-        var newWidth = $(window).width() - Math.max($(window).width() - ($(window).height() - 90 + 10), 300) - 10;
-        if (detector.width != newWidth) {
-          $('#detector').width(newWidth).height(newWidth);
-          detector.init(newWidth);
-        }
-      } else if ($(window).width() < 992) {
-        if (detector.width != 300) {
-          $('#detector').width(300).height(300);
-          detector.init(300);
-        }
+      // init detector
+      var detectorSize;
+      if (windowWidth >= 1200) {
+        detectorSize = 500;
+      } else if (windowWidth < 768 && windowHeight - 90 < 300) {
+        detectorSize = windowWidth - magicWidth - 10;
+      } else if (windowWidth < 992) {
+        detectorSize = 300;
       } else {
-        if (detector.width != 400) {
-          $('#detector').width(400).height(400);
-          detector.init(400);
-        }
+        detectorSize = 400;
       }
+
+      if (detector.width != detectorSize) {
+        $('#detector').width(detectorSize).height(detectorSize);
+        detector.init(detectorSize);
+      }
+
     }
-    
+
+    // set event listener on resize, then run one to init
     $(window).resize(resize);
     resize();
+
   });
 
   /** Show a bootstrap modal with dynamic content. */
-  var showModal = function(title, text, level) {
+  // TODO: make use or get rid of the `level` argument
+  function showModal(title, text, level) {
     var $modal = $('#infoBox');
     $modal.find('#infoBoxLabel').html(title);
     $modal.find('.modal-body').html(text);
-    $modal.modal({show: true});
+    $modal.modal({ show: true });
   };
 
   /** Display only the elements with data-min-level above a certain
    * threshold.
    */
-  var showLevels = function(level) {
+  function showLevels(level) {
     $('#infoBox').find('[data-min-level]').each(function() {
-      if (level >= $(this).data('min-level')) {
-        $(this).show();
+      var $this = $(this);
+      if (level >= $this.data('min-level')) {
+        $this.show();
       } else {
-        $(this).hide();
+        $this.hide();
       }
     });
   };
 
-  var showUpdateValue = function(ident, num) {
+  function showUpdate(ident, insert) {
+    var $ident = $(ident);
+    $ident.append(insert);
+    insert.animate({
+      bottom: "+=30px",
+      opacity: 0
+    }, {
+      duration: 500,
+      complete: function() { $(this).remove(); }
+    });
+  }
+
+  function showUpdateValue(ident, num) {
     if (num != 0) {
       var formatted = Helpers.formatNumberPostfix(num);
-      var insert;
+      var $update = $("<div></div>");
       if (num > 0) {
-        insert = $("<div></div>")
-                  .attr("class", "update-plus")
-                  .html("+" + formatted);
+        $update.attr("class", "update-plus").html("+" + formatted);
       } else {
-        insert = $("<div></div>")
-                  .attr("class", "update-minus")
-                  .html(formatted);
+        $update.attr("class", "update-minus").html(formatted);
       }
-      showUpdate(ident, insert);
+      showUpdate(ident, $update);
     }
   }
 
-  var showUpdate = function(ident, insert) {
-    var elem = $(ident);
-    elem.append(insert);
-    insert.animate({
-      "bottom":"+=30px",
-      "opacity": 0
-    }, { duration: 500, complete: function() {
-      $(this).remove();
-    }});
+  function slideUpRemove($element) {
+    $element.slideUp(300, function() {
+      $element.remove();
+    });
   }
 
-  var showAchievement = function(obj) {
-    var alert = '<div class="alert alert-success alert-dismissible" role="alert">';
-    alert += '<button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>';
-    alert += '<span class="fa ' + obj.icon + ' alert-glyph"></span> <span class="alert-text">' + obj.description + '</span>';
-    alert += '</div>';
+  function showAchievement(obj) {
 
-    alert = $(alert);
+    var $alert = $(
+      '<div class="alert alert-success alert-dismissible" role="alert">' +
+        '<button type="button" class="close" data-dismiss="alert">' +
+          '<span aria-hidden="true">&times;</span>' +
+          '<span class="sr-only">Close</span>' +
+        '</button>' +
+        '<i class="fa ' + obj.icon + ' alert-glyph"></i> ' +
+        '<span class="alert-text">' + obj.description + '</span>' +
+      '</div>'
+    );
 
-    $('#achievements-container').prepend(alert);
-    var remove = function(a)
-    {
-      return function()
-      {
-        a.slideUp(300, function() { a.remove(); });
-      };
-    };
+    $('#achievements-container').prepend($alert);
 
-    window.setTimeout(remove(alert), 2000);
+    window.setTimeout(slideUpRemove, 2000, $alert);
+
   }
 
-  if (typeof $.cookie('cookielaw') === 'undefined') {
-    var alert = '<div id="cookielaw" class="alert alert-info" role="alert">';
-    alert += '<button type="button" class="btn btn-primary">OK</button>';
-    alert += '<i class="fa fa-info-circle alert-glyph"></i> <span class="alert-text">Particle Clicker uses local storage to store your current progress.</span>';
-    alert += '</div>';
-    alert = $(alert);
-    alert.find('button').click(function ()
-    {
+  if ($.cookie('cookielaw') === undefined) {
+
+    var $alert = $(
+      '<div id="cookielaw" class="alert alert-info" role="alert">' +
+        '<button type="button" class="btn btn-primary">OK</button>'+
+        '<i class="fa fa-info-circle alert-glyph"></i> ' +
+        '<span class="alert-text">' +
+          'Particle Clicker uses local storage to store your current progress.' +
+        '</span>'+
+      '</div>'
+    );
+
+    $alert.find('button').click(function () {
       $.cookie('cookielaw', 'informed', { expires: 365 });
-      $('#cookielaw').slideUp(300, function() { $('#cookielaw').remove(); });
+      slideUpRemove($('#cookielaw'));
     })
 
-    $('#messages-container').append(alert);
+    $('#messages-container').append($alert);
   }
 
-  if (typeof $.cookie('cern60') === 'undefined') {
-    var alert = '<div id="cern60" class="alert alert-info" role="alert">';
-    alert += '<button type="button" class="btn btn-primary">Close</button>';
-    alert += '<i class="fa fa-area-chart alert-glyph"></i> <span class="alert-text"><a class="alert-link" href="http://home.web.cern.ch/about/updates/2014/12/take-part-cern-60-public-computing-challenge" target="_blank">Join the CERN 60 computing challenge!</a></span>';
-    alert += '</div>';
-    alert = $(alert);
-    alert.find('button').click(function ()
-    {
+  if ($.cookie('cern60') === undefined) {
+
+    var url = "https://home.web.cern.ch/news/news/computing/take-part-cern-60-public-computing-challenge";
+    var $alert = $(
+      '<div id="cern60" class="alert alert-info" role="alert">' +
+        '<button type="button" class="btn btn-primary">Close</button>' +
+        '<i class="fa fa-area-chart alert-glyph"></i> ' +
+        '<span class="alert-text">' +
+          '<a class="alert-link" href="' + url + '" target="_blank">' +
+            'Join the CERN 60 computing challenge!' +
+          '</a>' +
+        '</span>' +
+      '</div>'
+    );
+
+    $alert.find('button').click(function () {
       $.cookie('cern60', 'closed', { expires: 365 });
-      $('#cern60').slideUp(300, function() { $('#cern60').remove(); });
+      slideUpRemove($('#cern60'));
     })
 
-    $('#messages-container').append(alert);
+    $('#messages-container').append($alert);
+
   }
 
   return {
-    showAchievement: showAchievement,
-    showModal: showModal,
-    showLevels: showLevels,
-    showUpdateValue: showUpdateValue
+    showAchievement : showAchievement,
+    showModal       : showModal,
+    showLevels      : showLevels,
+    showUpdateValue : showUpdateValue
   }
 })();
 
-
-// I don't know what this is for, so I leave it here for the moment...
+// Reduce resource usage in the background by set detector.visible
+// to false when the page is out of focus.
+// https://developer.mozilla.org/en-US/docs/Web/API/Document/visibilitychange_event
 (function() {
-    var hidden = "hidden";
 
-    // Standards:
-    if (hidden in document)
-        document.addEventListener("visibilitychange", onchange);
-    else if ((hidden = "mozHidden") in document)
-        document.addEventListener("mozvisibilitychange", onchange);
-    else if ((hidden = "webkitHidden") in document)
-        document.addEventListener("webkitvisibilitychange", onchange);
-    else if ((hidden = "msHidden") in document)
-        document.addEventListener("msvisibilitychange", onchange);
-    // IE 9 and lower:
-    else if ('onfocusin' in document)
-        document.onfocusin = document.onfocusout = onchange;
-    // All others:
-    else
-        window.onpageshow = window.onpagehide 
-            = window.onfocus = window.onblur = onchange;
+	if ("visibilityState" in document) {
 
-    function onchange (evt) {
-        var v = 'visible', h = 'hidden',
-            evtMap = { 
-                focus:v, focusin:v, pageshow:v, blur:h, focusout:h, pagehide:h 
-            };
+		// Modern
+		document.addEventListener("visibilitychange", function () {
+			detector.visible = document.visibilityState === "visible";
+		});
 
-        evt = evt || window.event;
-        if (evt.type in evtMap)
-            detector.visible = evtMap[evt.type] == 'visible';
-        else        
-            detector.visible = !this[hidden];
-    }
+	} else {
+
+		var hidden = "hidden";
+
+		function onchange() {
+			detector.visible = !document[hidden];
+		}
+
+		// Standard
+		if (hidden in document)
+			document.addEventListener("visibilitychange", onchange);
+
+		// Prefixed
+		else if ((hidden = "mozHidden") in document)
+			document.addEventListener("mozvisibilitychange", onchange);
+		else if ((hidden = "webkitHidden") in document)
+			document.addEventListener("webkitvisibilitychange", onchange);
+		else if ((hidden = "msHidden") in document)
+			document.addEventListener("msvisibilitychange", onchange);
+
+		// Old
+		else {
+			function visible() { detector.visible = true; }
+			function hidden() { detector.visible = false; }
+			if ("onfocusin" in document) { // IE 9 and lower:
+				document.onfocusin = visible;
+				document.onfocusout = hidden;
+			} else { // All others:
+				window.onpageshow = window.onfocus = visible;
+				window.onpagehide = window.onblur = hidden;
+			}
+		}
+
+	}
+
 })();
